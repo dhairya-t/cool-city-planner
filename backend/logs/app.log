@@ -116,3 +116,10 @@
 2025-07-19 17:10:10,520 - main - INFO - Starting CoolCity Planner API
 2025-07-19 17:10:10,521 - main - INFO - Environment: development
 2025-07-19 17:10:10,522 - main - INFO - Debug mode: True
+2025-07-19 17:29:28,160 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 17:29:34,926 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:29:35,052 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:29:35,071 - main - INFO - Starting CoolCity Planner API
+2025-07-19 17:29:35,071 - main - INFO - Environment: development
+2025-07-19 17:29:35,071 - main - INFO - Debug mode: True
+2025-07-19 17:30:44,524 - main - INFO - Shutting down CoolCity Planner API

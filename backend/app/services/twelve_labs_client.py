@@ -222,8 +222,9 @@ class UrbanAnalyzer:
                 # Parse and categorize results
                 await self._parse_search_results(query, search_results, all_features)
             
-            # Clean up temporary files
-            Path(video_path).unlink(missing_ok=True)
+            # Clean up temporary video file
+            from app.utils.video_converter import cleanup_video
+            cleanup_video(video_path)
             
             return all_features
             
@@ -234,33 +235,23 @@ class UrbanAnalyzer:
     async def _prepare_video_from_image(self, image_path: str) -> str:
         """Convert static image to video format for TwelveLabs processing"""
         try:
-            import cv2
-            import numpy as np
+            from app.utils.video_converter import VideoConverter
             
-            # Read the image
-            image = cv2.imread(image_path)
-            if image is None:
-                raise ValueError(f"Could not load image: {image_path}")
+            logger.info(f"Converting satellite image to video: {image_path}")
             
-            # Create a short video from the static image
-            output_path = f"temp_video_{uuid.uuid4().hex}.mp4"
+            # Use enhanced video converter with FFmpeg/OpenCV fallback
+            converter = await VideoConverter.get_optimal_converter()
             
-            height, width, layers = image.shape
-            size = (width, height)
+            # Create a 3-second video at 30 FPS for better quality
+            video_path = await converter.convert_image_to_video(
+                image_path=image_path,
+                duration=3.0,  # 3 seconds for better analysis
+                fps=30,  # Higher FPS for smoother video
+                prefer_ffmpeg=True  # Prefer FFmpeg for better quality
+            )
             
-            # Create video writer
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(output_path, fourcc, 1.0, size)  # 1 FPS for static image
-            
-            # Write the same frame multiple times to create a short video
-            for _ in range(5):  # 5 seconds at 1 FPS
-                out.write(image)
-            
-            out.release()
-            cv2.destroyAllWindows()
-            
-            logger.info(f"Created temporary video: {output_path}")
-            return output_path
+            logger.info(f"Successfully created video for TwelveLabs: {video_path}")
+            return video_path
             
         except Exception as e:
             logger.error(f"Error creating video from image: {str(e)}")

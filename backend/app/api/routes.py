@@ -1,23 +1,25 @@
 """
 API routes for the CoolCity Planner backend
 """
-import os
-import uuid
 import asyncio
-from typing import Dict, Any
+import uuid
+import shutil
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from typing import Dict, Any
+from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 
+from app.models.schemas import (
+    ImageUploadResponse, 
+    TaskStatusResponse,
+    UrbanAnalysisResponse,
+    UrbanFeatures,
+    Coordinates
+)
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.models.schemas import (
-    ImageUploadResponse,
-    AnalysisStatusResponse,
-    UrbanAnalysisResponse,
-    UrbanFeatures
-)
 from app.services.twelve_labs_client import UrbanAnalyzer
+from app.services.integrated_analysis import IntegratedAnalysisService
 
 logger = get_logger(__name__)
 
@@ -88,7 +90,7 @@ async def upload_satellite_image(
         logger.error(f"Error uploading image: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error during upload")
 
-@router.get("/api/status/{task_id}", response_model=AnalysisStatusResponse)
+@router.get("/api/status/{task_id}", response_model=TaskStatusResponse)
 async def get_analysis_status(task_id: str):
     """Get the status of an analysis task"""
     try:
@@ -103,7 +105,7 @@ async def get_analysis_status(task_id: str):
             elapsed_time = asyncio.get_event_loop().time() - task_data['created_at']
             estimated_completion = max(0, 180 - int(elapsed_time))  # 3 minutes total estimate
         
-        return AnalysisStatusResponse(
+        return TaskStatusResponse(
             task_id=task_id,
             status=task_data['status'],
             progress=task_data.get('progress', 0),
@@ -192,41 +194,49 @@ async def process_satellite_image(task_id: str, file_path: str):
         task_storage[task_id]['status'] = 'processing'
         task_storage[task_id]['progress'] = 10
         
-        # Initialize the urban analyzer
-        analyzer = UrbanAnalyzer()
+        # Initialize the integrated analysis service
+        integrated_analyzer = IntegratedAnalysisService()
         
         # Update progress
-        task_storage[task_id]['progress'] = 30
+        task_storage[task_id]['progress'] = 20
         
-        # For demo purposes, we'll use mock data if TwelveLabs API is not configured
+        # Check if we have API keys for comprehensive analysis
         if not settings.TWELVE_LABS_API_KEY:
-            logger.warning("TwelveLabs API key not configured. Using mock data.")
+            logger.warning("TwelveLabs API key not configured. Using mock data for all services.")
             
-            # Simulate processing time
-            await asyncio.sleep(5)
-            task_storage[task_id]['progress'] = 60
+            # Simulate processing time for integrated analysis
             await asyncio.sleep(3)
+            task_storage[task_id]['progress'] = 40
+            await asyncio.sleep(2)
+            task_storage[task_id]['progress'] = 70
+            await asyncio.sleep(2)
             task_storage[task_id]['progress'] = 90
             
-            # Generate mock urban features
-            mock_features = generate_mock_urban_features()
-            task_storage[task_id]['result'] = mock_features
+            # Generate mock comprehensive analysis
+            mock_result = generate_mock_integrated_analysis(task_id)
+            task_storage[task_id]['result'] = mock_result
             
         else:
-            # Real analysis using TwelveLabs
-            logger.info("Performing real analysis with TwelveLabs API")
+            # Real integrated analysis using all APIs
+            logger.info("Performing comprehensive analysis with TwelveLabs + OpenWeather + NASA APIs")
             
-            # Update progress
-            task_storage[task_id]['progress'] = 50
+            # Extract coordinates from image metadata or use defaults
+            # TODO: In a real implementation, extract GPS coordinates from image EXIF data
+            coordinates = Coordinates(lat=37.7749, lon=-122.4194)  # San Francisco default
             
-            # Analyze the image
-            urban_features = await analyzer.analyze_satellite_image(file_path)
+            # Update progress through analysis phases
+            task_storage[task_id]['progress'] = 30
+            
+            # Perform integrated analysis
+            integrated_result = await integrated_analyzer.perform_comprehensive_analysis(
+                task_id, file_path, coordinates
+            )
             
             # Update progress
             task_storage[task_id]['progress'] = 90
             
-            # Store results
-            task_storage[task_id]['result'] = urban_features
+            # Store comprehensive results
+            task_storage[task_id]['result'] = integrated_result
         
         # Mark as completed
         task_storage[task_id]['status'] = 'completed'
@@ -368,3 +378,130 @@ def calculate_heat_risk(features: UrbanFeatures) -> str:
         return "Medium"
     else:
         return "Low"
+
+def generate_mock_integrated_analysis(task_id: str):
+    """Generate mock integrated analysis result combining all data sources"""
+    from app.services.integrated_analysis import IntegratedAnalysisResult
+    from datetime import datetime
+    
+    # Generate mock urban features
+    mock_urban_features = generate_mock_urban_features()
+    
+    # Mock coordinates (San Francisco)
+    coordinates = Coordinates(lat=37.7749, lon=-122.4194)
+    
+    # Mock weather data
+    mock_weather = {
+        "temperature": 26.5,
+        "feels_like": 29.2,
+        "humidity": 68,
+        "pressure": 1015,
+        "description": "partly cloudy",
+        "wind_speed": 4.1,
+        "wind_direction": 225,
+        "cloudiness": 35,
+        "visibility": 12.0
+    }
+    
+    # Mock heat forecast
+    mock_forecast = [
+        {"datetime": "2024-07-19 18:00:00", "temperature": 27.5, "humidity": 65, "heat_index": 30.2, "description": "sunny", "wind_speed": 3.8},
+        {"datetime": "2024-07-20 06:00:00", "temperature": 22.1, "humidity": 75, "heat_index": 23.8, "description": "clear", "wind_speed": 2.5},
+        {"datetime": "2024-07-20 12:00:00", "temperature": 28.9, "humidity": 62, "heat_index": 31.5, "description": "sunny", "wind_speed": 4.2},
+        {"datetime": "2024-07-20 18:00:00", "temperature": 26.8, "humidity": 68, "heat_index": 29.1, "description": "partly cloudy", "wind_speed": 3.9}
+    ]
+    
+    # Mock NASA data
+    mock_land_temp = {
+        "coordinates": {"lat": 37.7749, "lon": -122.4194},
+        "land_surface_temperature": {"day": 32.5, "night": 19.8, "unit": "celsius"},
+        "data_quality": "good",
+        "timestamp": datetime.now().isoformat(),
+        "resolution": "1km",
+        "source": "NASA MODIS (Mock)"
+    }
+    
+    mock_vegetation = {
+        "coordinates": {"lat": 37.7749, "lon": -122.4194},
+        "date": "2024-07-19",
+        "ndvi": 0.42,
+        "vegetation_health": "moderate",
+        "chlorophyll_content": 42.0,
+        "source": "NASA MODIS NDVI (Mock)"
+    }
+    
+    mock_air_quality = {
+        "coordinates": {"lat": 37.7749, "lon": -122.4194},
+        "pm25": 16.8,
+        "pm10": 29.3,
+        "ozone": 48.7,
+        "no2": 14.2,
+        "so2": 7.9,
+        "co": 0.9,
+        "aqi": 68,
+        "quality_level": "Moderate",
+        "source": "NASA Air Quality (Mock)"
+    }
+    
+    mock_climate_trends = {
+        "coordinates": {"lat": 37.7749, "lon": -122.4194},
+        "analysis_period": "5 years",
+        "temperature_trend": {"average_increase_per_year": 0.18, "total_change": 0.9, "trend": "warming"},
+        "precipitation_trend": {"average_change_per_year": -1.8, "total_change": -9.0, "trend": "decreasing"},
+        "extreme_events": {"heat_waves_per_year": 4.1, "drought_days_per_year": 52, "increase_in_hot_days": 11.5},
+        "vegetation_changes": {"ndvi_trend": "declining", "average_change_per_year": -0.025},
+        "source": "NASA Climate Analysis (Mock)"
+    }
+    
+    # Mock recommendations
+    mock_recommendations = [
+        {
+            "category": "Green Infrastructure",
+            "priority": "high",
+            "action": "Increase Urban Tree Canopy",
+            "description": "Plant 500+ additional trees in identified heat hotspots",
+            "impact": "Reduce local temperatures by 2-4°C",
+            "cost_estimate": "$75,000 - $150,000",
+            "timeline": "8-12 months",
+            "data_source": "TwelveLabs + NASA NDVI Analysis"
+        },
+        {
+            "category": "Surface Materials",
+            "priority": "high",
+            "action": "Cool Roof Initiative",
+            "description": "Install reflective roofing on 20+ identified buildings",
+            "impact": "Reduce building surface temperatures by 12-18°C",
+            "cost_estimate": "$45,000 - $90,000",
+            "timeline": "4-6 months",
+            "data_source": "TwelveLabs Material Analysis"
+        },
+        {
+            "category": "Long-term Planning",
+            "priority": "medium",
+            "action": "Climate Resilience Strategy",
+            "description": "Develop comprehensive heat adaptation plan",
+            "impact": "Prepare for projected 0.9°C temperature increase",
+            "cost_estimate": "$200,000 - $400,000",
+            "timeline": "12-18 months",
+            "data_source": "NASA Climate Trends + Integrated Analysis"
+        }
+    ]
+    
+    # Create the integrated result
+    return IntegratedAnalysisResult(
+        task_id=task_id,
+        coordinates=coordinates,
+        urban_features=mock_urban_features,
+        current_weather=mock_weather,
+        heat_forecast=mock_forecast,
+        land_surface_temp=mock_land_temp,
+        vegetation_index=mock_vegetation,
+        air_quality=mock_air_quality,
+        climate_trends=mock_climate_trends,
+        heat_island_intensity=6.2,  # 0-10 scale
+        risk_assessment="high",
+        recommendations=mock_recommendations,
+        processing_time=8.5,
+        data_sources_used=["TwelveLabs (Mock)", "OpenWeather (Mock)", "NASA (Mock)"],
+        analysis_timestamp=datetime.now().isoformat()
+    )
