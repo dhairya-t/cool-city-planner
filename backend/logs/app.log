@@ -110,3 +110,9 @@
 2025-07-19 16:59:24,206 - app.services.twelve_labs_client - ERROR - Error analyzing satellite image: TasksClient.create() got an unexpected keyword argument 'file'
 2025-07-19 16:59:24,206 - app.api.routes - ERROR - Error processing satellite image for task ce605ba7-9084-4f37-aed0-0ac212ffb224: TasksClient.create() got an unexpected keyword argument 'file'
 2025-07-19 17:00:51,876 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 17:10:07,701 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 17:10:10,429 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:10:10,510 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:10:10,520 - main - INFO - Starting CoolCity Planner API
+2025-07-19 17:10:10,521 - main - INFO - Environment: development
+2025-07-19 17:10:10,522 - main - INFO - Debug mode: True
