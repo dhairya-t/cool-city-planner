@@ -2,8 +2,20 @@ import React, { useState } from "react";
 import HeatMap from "./components/HeatMap";
 import RecommendationPanel from "./components/RecommendationPanel";
 import AnalysisResults from "./components/AnalysisResults";
+import DetailedAnalysis from "./components/DetailedAnalysis";
 import GoogleMapSelector from "./components/GoogleMapSelector";
 import "./App.css";
+
+// Define types for the API response
+
+interface ApiResponse {
+  status: string;
+  image: string;
+  heatmap: string;
+  vellum_analysis: any[];
+  building_coverage: number;
+  vegetation_coverage: number;
+}
 
 function App() {
   const [selectedLocation, setSelectedLocation] = useState<{
@@ -13,7 +25,7 @@ function App() {
   } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
-  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [analysisData, setAnalysisData] = useState<ApiResponse | null>(null);
 
   const handleLocationSelect = (coordinates: { lat: number; lng: number }) => {
     setSelectedLocation({
@@ -28,66 +40,35 @@ function App() {
 
     setIsAnalyzing(true);
 
-    // Simulate AI analysis process
-    setTimeout(() => {
-      const mockData = {
-        coordinates: selectedLocation,
-        heatIslandIntensity: 3.2,
-        vegetationCoverage: 23.5,
-        buildingDensity: 67.8,
-        surfaceTemperature: 28.7,
-        recommendations: [
-          {
-            type: "Green Infrastructure",
-            title: "Plant 150 Trees Along Main Corridor",
-            impact: "2.3°C temperature reduction",
-            cost: "$45,000",
-            timeline: "6 months",
-          },
-          {
-            type: "Building Modifications",
-            title: "Convert 5 Rooftops to Green Roofs",
-            impact: "1.8°C local cooling",
-            cost: "$120,000",
-            timeline: "12 months",
-          },
-          {
-            type: "Urban Design",
-            title: "Create Cooling Corridors with Water Features",
-            impact: "3.1°C corridor cooling",
-            cost: "$200,000",
-            timeline: "18 months",
-          },
-        ],
-        interventions: [
-          {
-            id: 1,
-            lat: selectedLocation.lat + 0.001,
-            lng: selectedLocation.lng + 0.001,
-            type: "tree",
-            impact: 2.3,
-          },
-          {
-            id: 2,
-            lat: selectedLocation.lat - 0.001,
-            lng: selectedLocation.lng - 0.001,
-            type: "green_roof",
-            impact: 1.8,
-          },
-          {
-            id: 3,
-            lat: selectedLocation.lat,
-            lng: selectedLocation.lng,
-            type: "water_feature",
-            impact: 3.1,
-          },
-        ],
-      };
+    try {
+      // Make API call to backend
+      const response = await fetch("https://urban.midnightsky.net/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latitude: selectedLocation.lat,
+          longitude: selectedLocation.lng,
+          analysis_radius: 0.005,
+        }),
+      });
 
-      setAnalysisData(mockData);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiResponse = await response.json();
+      setAnalysisData(apiResponse);
       setIsAnalyzing(false);
       setAnalysisComplete(true);
-    }, 3000);
+    } catch (error) {
+      console.error("Error during analysis:", error);
+      setIsAnalyzing(false);
+      setAnalysisComplete(false);
+      // Show error to user instead of using fallback data
+      alert("Failed to connect to analysis service. Please try again.");
+    }
   };
 
   const resetAnalysis = () => {
@@ -296,17 +277,148 @@ function App() {
               </button>
             </div>
 
-            <AnalysisResults data={analysisData} />
+            {/* Transform API data for AnalysisResults component */}
+            {(() => {
+              const hotspotAnalysis = analysisData.vellum_analysis.find(
+                (analysis) => analysis.name === "hotspot_analysis"
+              );
 
-            <div className="grid lg:grid-cols-2 gap-6">
-              <HeatMap
-                imageUrl={null}
-                interventions={analysisData.interventions}
-              />
-              <RecommendationPanel
-                recommendations={analysisData.recommendations}
-              />
-            </div>
+              const analysisMetrics = {
+                vegetation_coverage: Math.round(
+                  analysisData.vegetation_coverage * 100
+                ),
+                building_coverage: Math.round(
+                  analysisData.building_coverage * 100
+                ),
+              };
+
+              // Transform recommendations data
+              const recommendationsData = analysisData.vellum_analysis.find(
+                (analysis) => analysis.name === "recommendations"
+              );
+
+              const transformedRecommendations = [
+                ...(recommendationsData?.value?.immediate_actions?.map(
+                  (action: any, index: number) => ({
+                    type: "Immediate Action",
+                    title: action.action,
+                    impact: action.temperature_impact,
+                    cost: action.cost_range,
+                    timeline: action.timeline,
+                  })
+                ) || []),
+                ...(recommendationsData?.value?.short_term_projects?.map(
+                  (project: any, index: number) => ({
+                    type: "Short-term Project",
+                    title: project.project,
+                    impact: project.cooling_impact,
+                    cost: project.cost_estimate,
+                    timeline: project.timeline,
+                  })
+                ) || []),
+                ...(recommendationsData?.value?.long_term_strategies?.map(
+                  (strategy: any, index: number) => ({
+                    type: "Long-term Strategy",
+                    title: strategy.strategy,
+                    impact: strategy.temperature_impact,
+                    cost: strategy.investment,
+                    timeline: strategy.timeline,
+                  })
+                ) || []),
+              ];
+
+              // Create interventions from hotspot analysis
+              const interventions = [
+                ...(hotspotAnalysis?.value?.hot_zones?.map(
+                  (zone: any, index: number) => ({
+                    id: zone.id,
+                    lat: selectedLocation!.lat + (Math.random() - 0.5) * 0.01,
+                    lng: selectedLocation!.lng + (Math.random() - 0.5) * 0.01,
+                    type: "hot_zone",
+                    impact:
+                      zone.intensity === "extreme"
+                        ? 4
+                        : zone.intensity === "high"
+                        ? 3
+                        : 2,
+                  })
+                ) || []),
+                ...(hotspotAnalysis?.value?.cool_zones?.map(
+                  (zone: any, index: number) => ({
+                    id: `cool_${zone.id}`,
+                    lat: selectedLocation!.lat + (Math.random() - 0.5) * 0.01,
+                    lng: selectedLocation!.lng + (Math.random() - 0.5) * 0.01,
+                    type: "cool_zone",
+                    impact: zone.cooling_intensity === "high" ? -3 : -2,
+                  })
+                ) || []),
+              ];
+
+              return (
+                <>
+                  <AnalysisResults data={analysisMetrics} />
+
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    <HeatMap
+                      imageUrl={analysisData.image}
+                      heatmapUrl={analysisData.heatmap}
+                      interventions={interventions}
+                    />
+                    <RecommendationPanel
+                      recommendations={transformedRecommendations}
+                    />
+                  </div>
+
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                      <h3 className="text-lg font-semibold mb-4">
+                        Analysis Summary
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Analysis Status:
+                          </span>
+                          <span className="text-sm font-medium text-green-600">
+                            {analysisData.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Satellite Image:
+                          </span>
+                          <span className="text-sm font-medium">
+                            {analysisData.image ? "Available" : "Not available"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Heat Map:
+                          </span>
+                          <span className="text-sm font-medium">
+                            {analysisData.heatmap
+                              ? "Available"
+                              : "Not available"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Analysis Components:
+                          </span>
+                          <span className="text-sm font-medium">
+                            {analysisData.vellum_analysis.length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DetailedAnalysis
+                    vellumAnalysis={analysisData.vellum_analysis}
+                  />
+                </>
+              );
+            })()}
           </div>
         )}
       </main>

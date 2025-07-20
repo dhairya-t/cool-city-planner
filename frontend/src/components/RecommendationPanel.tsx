@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 interface Recommendation {
   type: string;
@@ -12,19 +12,37 @@ interface RecommendationPanelProps {
   recommendations: Recommendation[];
 }
 
-const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recommendations }) => {
+const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
+  recommendations,
+}) => {
   const [selectedRec, setSelectedRec] = useState(0);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'Green Infrastructure':
-        return <div className="h-5 w-5 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">🌲</div>;
-      case 'Building Modifications':
-        return <div className="h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">🏠</div>;
-      case 'Urban Design':
-        return <div className="h-5 w-5 bg-blue-400 rounded-full flex items-center justify-center text-white text-xs">🌊</div>;
+      case "Green Infrastructure":
+        return (
+          <div className="h-5 w-5 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">
+            🌲
+          </div>
+        );
+      case "Building Modifications":
+        return (
+          <div className="h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">
+            🏠
+          </div>
+        );
+      case "Urban Design":
+        return (
+          <div className="h-5 w-5 bg-blue-400 rounded-full flex items-center justify-center text-white text-xs">
+            🌊
+          </div>
+        );
       default:
-        return <div className="h-5 w-5 bg-gray-600 rounded-full flex items-center justify-center text-white text-xs">🌲</div>;
+        return (
+          <div className="h-5 w-5 bg-gray-600 rounded-full flex items-center justify-center text-white text-xs">
+            🌲
+          </div>
+        );
     }
   };
 
@@ -44,13 +62,17 @@ KEY FINDINGS:
 - Building density: 67.8% (requiring cooling interventions)
 
 RECOMMENDED INTERVENTIONS:
-${recommendations.map((rec, index) => `
+${recommendations
+  .map(
+    (rec, index) => `
 ${index + 1}. ${rec.title}
    Type: ${rec.type}
    Expected Impact: ${rec.impact}
    Investment Required: ${rec.cost}
    Timeline: ${rec.timeline}
-`).join('')}
+`
+  )
+  .join("")}
 
 IMPLEMENTATION PRIORITY:
 1. Immediate (0-6 months): Tree planting initiatives
@@ -67,11 +89,11 @@ This report was generated using AI-powered analysis combining TwelveLabs image r
 Vellum multi-agent orchestration, and Gemini intelligence synthesis.
     `;
 
-    const blob = new Blob([report], { type: 'text/plain' });
+    const blob = new Blob([report], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'coolcity-policy-report.txt';
+    a.download = "coolcity-policy-report.txt";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -86,7 +108,9 @@ Vellum multi-agent orchestration, and Gemini intelligence synthesis.
           onClick={generatePolicyReport}
           className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm transition-colors"
         >
-          <div className="h-4 w-4 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs">📥</div>
+          <div className="h-4 w-4 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs">
+            📥
+          </div>
           <span>Download Report</span>
         </button>
       </div>
@@ -97,8 +121,8 @@ Vellum multi-agent orchestration, and Gemini intelligence synthesis.
             key={index}
             className={`p-3 rounded-lg border cursor-pointer transition-all ${
               selectedRec === index
-                ? 'border-green-500 bg-green-50'
-                : 'border-gray-200 hover:border-gray-300'
+                ? "border-green-500 bg-green-50"
+                : "border-gray-200 hover:border-gray-300"
             }`}
             onClick={() => setSelectedRec(index)}
           >
@@ -110,7 +134,9 @@ Vellum multi-agent orchestration, and Gemini intelligence synthesis.
               </div>
               <div className="text-right">
                 <div className="flex items-center space-x-1 text-xs text-red-600 font-medium">
-                  <div className="h-3 w-3 bg-red-600 rounded-full flex items-center justify-center text-white text-xs">📉</div>
+                  <div className="h-3 w-3 bg-red-600 rounded-full flex items-center justify-center text-white text-xs">
+                    📉
+                  </div>
                   <span>{rec.impact}</span>
                 </div>
               </div>
@@ -125,43 +151,33 @@ Vellum multi-agent orchestration, and Gemini intelligence synthesis.
           <h4 className="font-medium mb-3">Implementation Details</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex items-center space-x-2">
-              <div className="h-4 w-4 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">💵</div>
+              <div className="h-4 w-4 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">
+                💵
+              </div>
               <span className="text-gray-600">Cost:</span>
-              <span className="font-medium">{recommendations[selectedRec].cost}</span>
+              <span className="font-medium">
+                {recommendations[selectedRec].cost}
+              </span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="h-4 w-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">⏰</div>
+              <div className="h-4 w-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">
+                ⏰
+              </div>
               <span className="text-gray-600">Timeline:</span>
-              <span className="font-medium">{recommendations[selectedRec].timeline}</span>
+              <span className="font-medium">
+                {recommendations[selectedRec].timeline}
+              </span>
             </div>
           </div>
-          
+
           <div className="mt-3 p-3 bg-blue-50 rounded-md">
             <p className="text-sm text-blue-800">
-              <strong>Impact:</strong> {recommendations[selectedRec].impact} expected temperature reduction
+              <strong>Impact:</strong> {recommendations[selectedRec].impact}{" "}
+              expected temperature reduction
             </p>
           </div>
         </div>
       )}
-
-      {/* Summary stats */}
-      <div className="mt-4 pt-4 border-t">
-        <h4 className="font-medium mb-2 text-sm">Total Impact Summary</h4>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="bg-red-50 p-3 rounded">
-            <div className="text-lg font-bold text-red-600">-2.4°C</div>
-            <div className="text-xs text-gray-600">Avg Cooling</div>
-          </div>
-          <div className="bg-green-50 p-3 rounded">
-            <div className="text-lg font-bold text-green-600">$365K</div>
-            <div className="text-xs text-gray-600">Investment</div>
-          </div>
-          <div className="bg-blue-50 p-3 rounded">
-            <div className="text-lg font-bold text-blue-600">18 mo</div>
-            <div className="text-xs text-gray-600">Timeline</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
