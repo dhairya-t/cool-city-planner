@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """
-Live Satellite Service - Based on Chilladelphia's approach
 Downloads and analyzes satellite imagery on-demand using Google Maps API
 No data storage - processes live satellite tiles
 """
@@ -12,6 +11,7 @@ import cv2
 import requests
 import numpy as np
 import math
+from scipy.ndimage import gaussian_filter, distance_transform_edt
 import tempfile
 import os
 from typing import Dict, Any, Tuple, Optional
@@ -20,8 +20,11 @@ from pathlib import Path
 from app.core.logging import get_logger
 from dataclasses import dataclass
 
+from app.services.analysis_service import analyze_image
+
 logger = get_logger(__name__)
 logger.setLevel(logging.DEBUG)
+
 
 @dataclass
 class ImageAnalysis:
@@ -29,16 +32,72 @@ class ImageAnalysis:
     image: np.ndarray  # Satellite image
     vegetation_mask: np.ndarray | None  # Vegetation mask
     building_mask: np.ndarray | None  # Building mask
+    heat_map: np.ndarray | None  # Heat map
+
+
+def _project_with_scale(lat: float, lon: float, scale: int) -> Tuple[float, float]:
+    """Mercator projection for coordinate conversion"""
+    siny = np.sin(lat * np.pi / 180)
+    siny = min(max(siny, -0.9999), 0.9999)
+    x = scale * (0.5 + lon / 360)
+    y = scale * (0.5 - np.log((1 + siny) / (1 - siny)) / (4 * np.pi))
+    return x, y
+
+
+def urban_heatmap(building_mask, veg_mask,
+                  sigma_build=15, sigma_veg=15,
+                  w_build=1.0, w_veg=0.9,
+                  method="ndui"):
+    """
+    building_mask, veg_mask: 2D boolean or {0,1} arrays (same shape)
+    method: "weighted", "ndui", "signed_distance"
+    Returns continuous influence field in [-1,1] (approx).
+    """
+
+    B = building_mask.astype(float)
+    V = veg_mask.astype(float)
+
+    # Blurred influence fields
+    B_blur = gaussian_filter(B, sigma_build, mode='nearest')
+    V_blur = gaussian_filter(V, sigma_veg, mode='nearest')
+
+    eps = 1e-6
+
+    if method == "weighted":
+        H = w_build * B_blur - w_veg * V_blur
+        # Normalize to [-1,1]
+        H = H / (np.max(np.abs(H)) + eps)
+
+    elif method == "ndui":
+        # Normalized difference style
+        H = (w_build * B_blur - w_veg * V_blur) / (w_build * B_blur + w_veg * V_blur + eps)
+        # Already in [-1,1] approximately
+
+    elif method == "signed_distance":
+        # Distance competition
+        # Distances to each class (distance outside the class)
+        dist_to_build = distance_transform_edt(~(B > 0.5))
+        dist_to_veg = distance_transform_edt(~(V > 0.5))
+        gamma = (sigma_build + sigma_veg) / 2.0
+        S = (dist_to_veg - dist_to_build) / (gamma + eps)
+        H = np.tanh(S)  # squashes to (-1,1)
+
+    else:
+        raise ValueError("Unknown method")
+
+    return H  # heat influence (positive=>urban heat, negative=>cooling vegetation)
+
+    # Mapping to pseudo temperature (example)
 
 
 class LiveSatelliteService:
     """Live satellite imagery processing - downloads and analyzes on demand"""
-    
+
     def __init__(self):
         logger.info("🛰️ Live Satellite Service initialized - using Google Maps satellite imagery")
         self.tile_size = 256
         self.channels = 3
-        
+
         # Create directory for saving satellite images
         self.image_dir = Path("satellite_images")
         self.image_dir.mkdir(exist_ok=True)
@@ -55,18 +114,10 @@ class LiveSatelliteService:
             'upgrade-insecure-requests': '1',
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.82 Safari/537.36'
         }
-        # Google Maps satellite imagery URL - same as Chilladelphia uses
         self.satellite_url = 'https://mt.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
-    
-    def _project_with_scale(self, lat: float, lon: float, scale: int) -> Tuple[float, float]:
-        """Mercator projection for coordinate conversion"""
-        siny = np.sin(lat * np.pi / 180)
-        siny = min(max(siny, -0.9999), 0.9999)
-        x = scale * (0.5 + lon / 360)
-        y = scale * (0.5 - np.log((1 + siny) / (1 - siny)) / (4 * np.pi))
-        return x, y
 
-    async def _download_tile_async(self, session: aiohttp.ClientSession, tile_x: int, tile_y: int, zoom: int) -> Tuple[int, int, Optional[np.ndarray]]:
+    async def _download_tile_async(self, session: aiohttp.ClientSession, tile_x: int, tile_y: int, zoom: int) -> Tuple[
+        int, int, Optional[np.ndarray]]:
         """Download a single satellite tile asynchronously"""
         tile_url = self.satellite_url.format(x=tile_x, y=tile_y, z=zoom)
         try:
@@ -83,19 +134,21 @@ class LiveSatelliteService:
             logger.warning(f"Failed to download tile {tile_url}: {e}")
             return tile_x, tile_y, None
 
-    async def fetch_satellite_region(self, north_lat: float, west_lon: float, south_lat: float, east_lon: float, zoom: int) -> Optional[np.ndarray]:
+    async def fetch_satellite_region(self, north_lat: float, west_lon: float, south_lat: float, east_lon: float,
+                                     zoom: int) -> Optional[np.ndarray]:
         """
         Downloads and stitches satellite imagery for a rectangular geographic region.
         Uses parallel downloads for faster processing.
         """
-        logger.info(f"📡 Downloading satellite imagery for region ({north_lat}, {west_lon}) to ({south_lat}, {east_lon}) at zoom {zoom}")
+        logger.info(
+            f"📡 Downloading satellite imagery for region ({north_lat}, {west_lon}) to ({south_lat}, {east_lon}) at zoom {zoom}")
 
         # Calculate the scale factor for the current zoom level (2^zoom)
         scale = 1 << zoom
 
         # Convert geographic coordinates to projected coordinates
-        tl_proj_x, tl_proj_y = self._project_with_scale(north_lat, west_lon, scale)
-        br_proj_x, br_proj_y = self._project_with_scale(south_lat, east_lon, scale)
+        tl_proj_x, tl_proj_y = _project_with_scale(north_lat, west_lon, scale)
+        br_proj_x, br_proj_y = _project_with_scale(south_lat, east_lon, scale)
 
         # Convert projected coordinates to pixel coordinates
         tl_pixel_x = int(tl_proj_x * self.tile_size)
@@ -166,7 +219,6 @@ class LiveSatelliteService:
 
         # Only save the image if we successfully downloaded at least some tiles
         if tiles_downloaded > 0:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"satellite_{north_lat:.6f}_{west_lon:.6f}_to_{south_lat:.6f}_{east_lon:.6f}.png"
             image_path = self.image_dir / filename
 
@@ -175,7 +227,7 @@ class LiveSatelliteService:
             logger.info(f"💾 Saved satellite image: {image_path}")
 
         return img if tiles_downloaded > 0 else None
-    
+
     def analyze(self, image: np.ndarray, bounds: Tuple[float, float, float, float]) -> ImageAnalysis:
         """
         Simple vegetation analysis using color-based detection
@@ -184,87 +236,83 @@ class LiveSatelliteService:
         # Convert BGR to RGB
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        # Convert to HSV for better vegetation detection
-        hsv = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2HSV)
-
-        # Define green color ranges for vegetation
-        # Two ranges to capture different shades of green
-        lower_green = np.array([30, 18, 10])   # Light green
-        upper_green = np.array([200, 120, 120]) # Dark green
-
-        # Create masks for green vegetation
-        mask1 = cv2.inRange(hsv, lower_green, upper_green)
-
-        # Combine masks
-        vegetation_mask = mask1
-
-        # Calculate vegetation percentage
-        total_pixels = vegetation_mask.size
-        vegetation_pixels = np.sum(vegetation_mask > 0)
-        vegetation_percentage = (vegetation_pixels / total_pixels) * 100.0
+        rgb_image, vegetation_mask, building_mask = analyze_image(rgb_image)
 
         # Save vegetation analysis visualization
-        mask_filename = f"vegetation_mask.png"
-        mask_path = self.image_dir / mask_filename
+        veg_mask_filename = f"vegetation_mask.png"
+        veg_mask_path = self.image_dir / veg_mask_filename
 
-        # Create colored vegetation overlay
+        building_mask_filename = f"building_mask.png"
+        building_mask_path = self.image_dir / building_mask_filename
+
+        # Create vegetation overlay
         vegetation_overlay = rgb_image.copy()
-        vegetation_overlay[vegetation_mask > 0] = [0, 255, 0]  # Green for vegetation
+        building_overlay = rgb_image.copy()
+
+        # Squeeze the mask to remove any singleton dimensions, then create boolean mask
+        vegetation_mask_bool = vegetation_mask > 0
+        building_mask_bool = building_mask > 0
+
+        # Apply green color where vegetation is detected
+        vegetation_overlay[vegetation_mask_bool] = [0, 255, 0]
+        building_overlay[building_mask_bool] = [0, 0, 255]
 
         # Save vegetation mask and overlay
-        cv2.imwrite(str(mask_path), vegetation_mask)
+        cv2.imwrite(str(veg_mask_path), vegetation_mask)
         overlay_filename = f"vegetation_overlay.png"
         overlay_path = self.image_dir / overlay_filename
         cv2.imwrite(str(overlay_path), cv2.cvtColor(vegetation_overlay, cv2.COLOR_RGB2BGR))
 
-        logger.info(f"🌱 Saved vegetation mask: {mask_path}")
+        building_overlay_path = self.image_dir / building_mask_filename
+        cv2.imwrite(str(building_overlay_path), cv2.cvtColor(building_overlay, cv2.COLOR_RGB2BGR))
+
+        logger.info(f"🌱 Saved vegetation mask: {veg_mask_path}")
         logger.info(f"📊 Saved vegetation overlay: {overlay_path}")
 
         return ImageAnalysis(
             region=bounds,
             image=image,
             vegetation_mask=vegetation_mask,
-            building_mask=None,
+            building_mask=building_mask,
+            heat_map=None,
         )
-    
-    async def get_live_satellite_data(self, lat: float, lon: float, analysis_radius: float = 0.001) -> Optional[Dict[str, Any]]:
+
+    async def get_live_satellite_data(self, lat: float, lon: float, analysis_radius: float = 0.001) -> Optional[ImageAnalysis]:
         """
         Get live satellite data and analysis for coordinates
         """
         logger.info(f"🗺️ Getting live satellite data for {lat}, {lon} (radius: {analysis_radius})")
-        
-        try:
-            # Define analysis region around point (same as Chilladelphia's tile approach)
-            lat1 = lat + analysis_radius  # Top-left latitude
-            lon1 = lon - analysis_radius  # Top-left longitude  
-            lat2 = lat - analysis_radius  # Bottom-right latitude
-            lon2 = lon + analysis_radius  # Bottom-right longitude
-            
-            zoom = 17
-            
-            # Download satellite image for region
-            satellite_image = await self.fetch_satellite_region(lat1, lon1, lat2, lon2, zoom)
-            
-            if satellite_image is None:
-                logger.error("❌ Failed to download satellite imagery")
-                return None
-            
-            # Analyze vegetation in the image
-            analysis = self.analyze(satellite_image, lat, lon)
 
-            result = {
-                "coordinates": {"lat": lat, "lon": lon},
-                "analysis_region": {
-                    "top_left": [lat1, lon1],
-                    "bottom_right": [lat2, lon2],
-                    "radius_degrees": analysis_radius
-                },
-                "analysis": analysis
-            }
-            
-            logger.info(f"✅ Live satellite analysis complete")
-            return result
-            
-        except Exception as e:
-            logger.error(f"❌ Live satellite analysis failed: {e}")
+        lat1 = lat + analysis_radius  # Top-left latitude
+        lon1 = lon - analysis_radius  # Top-left longitude
+        lat2 = lat - analysis_radius  # Bottom-right latitude
+        lon2 = lon + analysis_radius  # Bottom-right longitude
+
+        zoom = 16
+
+        # Download satellite image for region
+        satellite_image = await self.fetch_satellite_region(lat1, lon1, lat2, lon2, zoom)
+
+        if satellite_image is None:
+            logger.error("❌ Failed to download satellite imagery")
             return None
+
+        # Analyze vegetation in the image
+        analysis = self.analyze(satellite_image, (lat1, lon1, lat2, lon2))
+
+        logger.info(f"✅ Live satellite analysis complete")
+
+        return ImageAnalysis(
+            region=(lat1, lon1, lat2, lon2),
+            image=analysis.image,
+            vegetation_mask=analysis.vegetation_mask,
+            building_mask=analysis.building_mask,
+            heat_map=urban_heatmap(analysis.building_mask, analysis.vegetation_mask),
+        )
+
+    def map_to_temperature(H, base=25.0, delta=5.0):
+            """
+            base: baseline temperature (°C)
+            delta: half-range: H=+1 -> base+delta, H=-1 -> base-delta
+            """
+            return base + delta * H

@@ -135,14 +135,12 @@ async def get_analysis_results(task_id: str):
             return {
                 "task_id": task_id,
                 "coordinates": {"lat": 37.7749, "lon": -122.4194},
-                "timestamp": datetime.now().isoformat(),
                 "satellite_analysis": {},
                 "heat_island_analysis": {},
                 "data_sources": {
                     "primary": "live_google_maps_satellite",
                     "backup": "none",
                     "storage_used": False,
-                    "approach": "chilladelphia_inspired_live_processing"
                 },
                 "processing_info": {
                     "analysis_type": "live_satellite_imagery",
@@ -174,7 +172,6 @@ async def get_analysis_results(task_id: str):
 
 @router.post("/api/coordinates/analyze")
 async def analyze_coordinates(request: Coordinates) -> UrbanAnalysisResponse:
-    """Analyze coordinates using live satellite service (Chilladelphia's approach)"""
     try:
         logger.info(f"🗺️ Analyzing coordinates: {request.lat}, {request.lon}")
         
@@ -186,7 +183,7 @@ async def analyze_coordinates(request: Coordinates) -> UrbanAnalysisResponse:
         satellite_data = await satellite_service.get_live_satellite_data(
             lat=request.lat,
             lon=request.lon,
-            analysis_radius=0.002  # Same as Chilladelphia's tile size
+            analysis_radius=0.002
         )
         
         if not satellite_data:
@@ -212,7 +209,6 @@ async def analyze_coordinates(request: Coordinates) -> UrbanAnalysisResponse:
                     "primary": "live_google_maps_satellite",
                     "backup": "none",
                     "storage_used": False,
-                    "approach": "chilladelphia_inspired_live_processing"
                 },
                 "processing_info": {
                     "analysis_type": "live_satellite_imagery",
