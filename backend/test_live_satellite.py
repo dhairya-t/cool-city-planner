@@ -25,8 +25,8 @@ async def test_live_satellite_analysis():
     test_locations = [
         {
             "name": "Toronto",
-            "lat": 43.642567,
-            "lon": -79.387054,
+            "lat": 43.6643,
+            "lon": -79.3923,
             "description": "Urban core - should show low vegetation"
         },
     ]
@@ -41,7 +41,7 @@ async def test_live_satellite_analysis():
         satellite_data = await service.get_live_satellite_data(
             location['lat'],
             location['lon'],
-            analysis_radius=0.025
+            analysis_radius=0.005
         )
 
         heat_map = satellite_data.heat_map

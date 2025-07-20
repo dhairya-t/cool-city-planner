@@ -288,7 +288,7 @@ class LiveSatelliteService:
         lat2 = lat - analysis_radius  # Bottom-right latitude
         lon2 = lon + analysis_radius  # Bottom-right longitude
 
-        zoom = 16
+        zoom = 18
 
         # Download satellite image for region
         satellite_image = await self.fetch_satellite_region(lat1, lon1, lat2, lon2, zoom)
