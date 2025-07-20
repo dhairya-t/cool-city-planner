@@ -25,14 +25,14 @@ app = FastAPI(
     debug=settings.DEBUG
 )
 
-# Allow all origins without credentials for public API access
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# # Allow all origins without credentials for public API access
+# app.add_middleware(
+#     CORSMiddlewar,
+#     allow_origins=["*"],
+#     allow_credentials=False,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # Create directories if they don't exist
 Path(settings.UPLOAD_DIR).mkdir(exist_ok=True)
