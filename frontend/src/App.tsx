@@ -41,11 +41,13 @@ function App() {
     setIsAnalyzing(true);
 
     try {
-      // Make API call to backend
+      // Make API call to backendz
       const response = await fetch("https://urban.midnightsky.net/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "*",
         },
         body: JSON.stringify({
           latitude: selectedLocation.lat,

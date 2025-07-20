@@ -18,9 +18,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ data }) => {
         </div>
       ),
       label: "Vegetation Coverage",
-      value: `${data.vegetation_coverage}%`,
+      value: `${Math.min(data.vegetation_coverage * 10, 100)}%`,
       description: "Current green space",
-      progress: data.vegetation_coverage,
+      progress: Math.min(data.vegetation_coverage * 10, 100),
       color: "bg-green-500",
     },
     {
@@ -30,9 +30,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ data }) => {
         </div>
       ),
       label: "Building Density",
-      value: `${data.building_coverage}%`,
+      value: `${Math.min(data.building_coverage * 10, 100)}%`,
       description: "Urban development",
-      progress: data.building_coverage,
+      progress: Math.min(data.building_coverage * 10, 100),
       color: "bg-blue-500",
     },
   ];
@@ -88,9 +88,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ data }) => {
           <div className="mt-3">
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className={`h-2 rounded-full ${
-                  metric.color
-                }`}
+                className={`h-2 rounded-full ${metric.color}`}
                 style={{
                   width: `${Math.min(metric.progress, 100)}%`,
                 }}
