@@ -4,7 +4,10 @@ Live Satellite Service - Based on Chilladelphia's approach
 Downloads and analyzes satellite imagery on-demand using Google Maps API
 No data storage - processes live satellite tiles
 """
+import logging
 
+import aiohttp
+import asyncio
 import cv2
 import requests
 import numpy as np
@@ -17,6 +20,7 @@ from pathlib import Path
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class LiveSatelliteService:
     """Live satellite imagery processing - downloads and analyzes on demand"""
@@ -52,97 +56,115 @@ class LiveSatelliteService:
         x = scale * (0.5 + lon / 360)
         y = scale * (0.5 - np.log((1 + siny) / (1 - siny)) / (4 * np.pi))
         return x, y
-    
-    def _download_tile(self, url: str) -> Optional[np.ndarray]:
-        """Download a single satellite tile"""
+
+    async def _download_tile_async(self, session: aiohttp.ClientSession, tile_x: int, tile_y: int, zoom: int) -> Tuple[int, int, Optional[np.ndarray]]:
+        """Download a single satellite tile asynchronously"""
+        tile_url = self.satellite_url.format(x=tile_x, y=tile_y, z=zoom)
         try:
-            response = requests.get(url, headers=self.headers, timeout=10)
-            response.raise_for_status()
-            
-            arr = np.asarray(bytearray(response.content), dtype=np.uint8)
-            return cv2.imdecode(arr, 1)  # Decode as BGR
-            
+            async with session.get(tile_url, headers=self.headers, timeout=10) as response:
+                if response.status == 200:
+                    content = await response.read()
+                    arr = np.asarray(bytearray(content), dtype=np.uint8)
+                    tile = cv2.imdecode(arr, 1)  # Decode as BGR
+                    return tile_x, tile_y, tile
+                else:
+                    logger.warning(f"Failed to download tile {tile_url}: HTTP {response.status}")
+                    return tile_x, tile_y, None
         except Exception as e:
-            logger.warning(f"Failed to download tile {url}: {e}")
-            return None
-    
-    def _download_satellite_image(self, lat1: float, lon1: float, lat2: float, lon2: float, zoom: int) -> Optional[np.ndarray]:
+            logger.warning(f"Failed to download tile {tile_url}: {e}")
+            return tile_x, tile_y, None
+
+    async def fetch_satellite_region(self, north_lat: float, west_lon: float, south_lat: float, east_lon: float, zoom: int) -> Optional[np.ndarray]:
         """
-        Download satellite image for a geographic region
-        Based on Chilladelphia's image_downloading.py
+        Downloads and stitches satellite imagery for a rectangular geographic region.
+        Uses parallel downloads for faster processing.
         """
-        logger.info(f"📡 Downloading satellite imagery for region ({lat1}, {lon1}) to ({lat2}, {lon2}) at zoom {zoom}")
-        
+        logger.info(f"📡 Downloading satellite imagery for region ({north_lat}, {west_lon}) to ({south_lat}, {east_lon}) at zoom {zoom}")
+
+        # Calculate the scale factor for the current zoom level (2^zoom)
         scale = 1 << zoom
-        
-        # Find pixel and tile coordinates of corners
-        tl_proj_x, tl_proj_y = self._project_with_scale(lat1, lon1, scale)
-        br_proj_x, br_proj_y = self._project_with_scale(lat2, lon2, scale)
-        
+
+        # Convert geographic coordinates to projected coordinates
+        tl_proj_x, tl_proj_y = self._project_with_scale(north_lat, west_lon, scale)
+        br_proj_x, br_proj_y = self._project_with_scale(south_lat, east_lon, scale)
+
+        # Convert projected coordinates to pixel coordinates
         tl_pixel_x = int(tl_proj_x * self.tile_size)
         tl_pixel_y = int(tl_proj_y * self.tile_size)
         br_pixel_x = int(br_proj_x * self.tile_size)
         br_pixel_y = int(br_proj_y * self.tile_size)
-        
+
+        # Determine which tiles we need to download
         tl_tile_x = int(tl_proj_x)
         tl_tile_y = int(tl_proj_y)
         br_tile_x = int(br_proj_x)
         br_tile_y = int(br_proj_y)
-        
+
+        # Calculate dimensions of the final stitched image
         img_w = abs(tl_pixel_x - br_pixel_x)
         img_h = br_pixel_y - tl_pixel_y
-        
+
         if img_w <= 0 or img_h <= 0:
-            logger.error("Invalid image dimensions")
+            logger.error("Invalid image dimensions - check coordinate ordering")
             return None
-            
+
+        # Initialize empty image to hold the stitched result
         img = np.zeros((img_h, img_w, self.channels), np.uint8)
-        
-        tiles_downloaded = 0
+
         total_tiles = (br_tile_x - tl_tile_x + 1) * (br_tile_y - tl_tile_y + 1)
-        
-        # Download each tile and stitch together
-        for tile_y in range(tl_tile_y, br_tile_y + 1):
-            for tile_x in range(tl_tile_x, br_tile_x + 1):
-                tile_url = self.satellite_url.format(x=tile_x, y=tile_y, z=zoom)
-                tile = self._download_tile(tile_url)
-                
+        logger.info(f"🧩 Need to download {total_tiles} tiles")
+
+        # Set up tasks for parallel downloading
+        async with aiohttp.ClientSession() as session:
+            download_tasks = []
+
+            for tile_y in range(tl_tile_y, br_tile_y + 1):
+                for tile_x in range(tl_tile_x, br_tile_x + 1):
+                    task = self._download_tile_async(session, tile_x, tile_y, zoom)
+                    download_tasks.append(task)
+
+            # Wait for all downloads to complete
+            results = await asyncio.gather(*download_tasks)
+
+            # Process results and place tiles in the image
+            tiles_downloaded = 0
+            for tile_x, tile_y, tile in results:
                 if tile is not None:
                     tiles_downloaded += 1
-                    
-                    # Calculate tile placement in final image
+
+                    # Calculate where in the final image this tile should be placed
                     tl_rel_x = tile_x * self.tile_size - tl_pixel_x
                     tl_rel_y = tile_y * self.tile_size - tl_pixel_y
                     br_rel_x = tl_rel_x + self.tile_size
                     br_rel_y = tl_rel_y + self.tile_size
-                    
-                    # Define placement boundaries
+
+                    # Calculate destination region in the final image (handling edge cases)
                     img_x_l = max(0, tl_rel_x)
                     img_x_r = min(img_w, br_rel_x)
                     img_y_l = max(0, tl_rel_y)
                     img_y_r = min(img_h, br_rel_y)
-                    
-                    # Define cropping for border tiles
+
+                    # Calculate source region from the tile (for partial tiles at edges)
                     cr_x_l = max(0, -tl_rel_x)
                     cr_x_r = self.tile_size + min(0, img_w - br_rel_x)
                     cr_y_l = max(0, -tl_rel_y)
                     cr_y_r = self.tile_size + min(0, img_h - br_rel_y)
-                    
-                    # Place tile in final image
+
+                    # Copy the appropriate portion of the tile into the result image
                     img[img_y_l:img_y_r, img_x_l:img_x_r] = tile[cr_y_l:cr_y_r, cr_x_l:cr_x_r]
-        
+
         logger.info(f"✅ Downloaded {tiles_downloaded}/{total_tiles} satellite tiles")
-        
-        # Save the complete satellite image
+
+        # Only save the image if we successfully downloaded at least some tiles
         if tiles_downloaded > 0:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"satellite_{lat1:.6f}_{lon1:.6f}_to_{lat2:.6f}_{lon2:.6f}_{timestamp}.png"
+            filename = f"satellite_{north_lat:.6f}_{west_lon:.6f}_to_{south_lat:.6f}_{east_lon:.6f}.png"
             image_path = self.image_dir / filename
-            
-            # Save the image
+
+            # Save the stitched image to disk
             cv2.imwrite(str(image_path), img)
             logger.info(f"💾 Saved satellite image: {image_path}")
-        
+
         return img if tiles_downloaded > 0 else None
     
     def _analyze_vegetation_simple(self, image: np.ndarray, lat: float, lon: float) -> Tuple[float, Dict[str, Any]]:
@@ -159,24 +181,15 @@ class LiveSatelliteService:
             
             # Define green color ranges for vegetation
             # Two ranges to capture different shades of green
-            lower_green1 = np.array([35, 30, 30])   # Light green
-            upper_green1 = np.array([85, 255, 255]) # Dark green
-            
-            lower_green2 = np.array([25, 20, 20])   # Very light green/yellow-green
-            upper_green2 = np.array([35, 255, 255])
-            
+            lower_green = np.array([30, 18, 10])   # Light green
+            upper_green = np.array([200, 120, 120]) # Dark green
+
             # Create masks for green vegetation
-            mask1 = cv2.inRange(hsv, lower_green1, upper_green1)
-            mask2 = cv2.inRange(hsv, lower_green2, upper_green2)
-            
+            mask1 = cv2.inRange(hsv, lower_green, upper_green)
+
             # Combine masks
-            vegetation_mask = cv2.bitwise_or(mask1, mask2)
-            
-            # Remove noise with morphological operations
-            kernel = np.ones((3,3), np.uint8)
-            vegetation_mask = cv2.morphologyEx(vegetation_mask, cv2.MORPH_OPEN, kernel)
-            vegetation_mask = cv2.morphologyEx(vegetation_mask, cv2.MORPH_CLOSE, kernel)
-            
+            vegetation_mask = mask1
+
             # Calculate vegetation percentage
             total_pixels = vegetation_mask.size
             vegetation_pixels = np.sum(vegetation_mask > 0)
@@ -196,7 +209,7 @@ class LiveSatelliteService:
             
             # Save vegetation analysis visualization
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            mask_filename = f"vegetation_mask_{lat:.6f}_{lon:.6f}_{timestamp}.png"
+            mask_filename = f"vegetation_mask_{lat:.6f}_{lon:.6f}.png"
             mask_path = self.image_dir / mask_filename
             
             # Create colored vegetation overlay
@@ -205,7 +218,7 @@ class LiveSatelliteService:
             
             # Save vegetation mask and overlay
             cv2.imwrite(str(mask_path), vegetation_mask)
-            overlay_filename = f"vegetation_overlay_{lat:.6f}_{lon:.6f}_{timestamp}.png"
+            overlay_filename = f"vegetation_overlay_{lat:.6f}_{lon:.6f}.png"
             overlay_path = self.image_dir / overlay_filename
             cv2.imwrite(str(overlay_path), cv2.cvtColor(vegetation_overlay, cv2.COLOR_RGB2BGR))
             
@@ -244,11 +257,10 @@ class LiveSatelliteService:
             lat2 = lat - analysis_radius  # Bottom-right latitude
             lon2 = lon + analysis_radius  # Bottom-right longitude
             
-            # Use zoom level 19 for high detail (same as Chilladelphia)
-            zoom = 19
+            zoom = 17
             
             # Download satellite image for region
-            satellite_image = self._download_satellite_image(lat1, lon1, lat2, lon2, zoom)
+            satellite_image = await self.fetch_satellite_region(lat1, lon1, lat2, lon2, zoom)
             
             if satellite_image is None:
                 logger.error("❌ Failed to download satellite imagery")

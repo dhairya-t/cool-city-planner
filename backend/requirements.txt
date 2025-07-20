@@ -17,3 +17,5 @@ twelvelabs==1.0.0b0
 vellum-ai
 requests
 httpx
+
+aiohttp~=3.12.14

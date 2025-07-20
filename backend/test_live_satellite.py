@@ -9,9 +9,11 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.app.services.live_satellite_service import LiveSatelliteService
+from app.core.logging import setup_logging
+from app.services.live_satellite_service import LiveSatelliteService
 
 async def test_live_satellite_analysis():
+    setup_logging(log_level="DEBUG")
     """Test live satellite analysis with multiple locations"""
     print("🛰️ Testing Live Satellite Service (Chilladelphia's approach)")
     print("=" * 60)
@@ -21,35 +23,11 @@ async def test_live_satellite_analysis():
     # Test locations - same types as Chilladelphia tested
     test_locations = [
         {
-            "name": "Philadelphia Center City", 
-            "lat": 39.9526, 
-            "lon": -75.1652,
+            "name": "Toronto",
+            "lat": 43.642567,
+            "lon": -79.387054,
             "description": "Urban core - should show low vegetation"
         },
-        {
-            "name": "Fairmount Park, Philadelphia",
-            "lat": 39.9896,
-            "lon": -75.2093, 
-            "description": "Large urban park - should show high vegetation"
-        },
-        {
-            "name": "South Philadelphia",
-            "lat": 39.9174,
-            "lon": -75.1654,
-            "description": "Residential area - moderate vegetation"
-        },
-        {
-            "name": "University City, Philadelphia", 
-            "lat": 39.9522,
-            "lon": -75.1932,
-            "description": "Mixed urban/campus area"
-        },
-        {
-            "name": "New York Central Park",
-            "lat": 40.7829,
-            "lon": -73.9654,
-            "description": "Major urban park for comparison"
-        }
     ]
     
     results = []
@@ -64,7 +42,7 @@ async def test_live_satellite_analysis():
             satellite_data = await service.get_live_satellite_data(
                 location['lat'], 
                 location['lon'],
-                analysis_radius=0.002  # Same radius as Chilladelphia's tiles
+                analysis_radius=0.025  # Same radius as Chilladelphia's tiles
             )
             
             if satellite_data:
@@ -81,13 +59,7 @@ async def test_live_satellite_analysis():
                 print(f"   💚 Vegetation Health: {vegetation_health}")
                 print(f"   🌡️  Estimated Temperature: {estimated_temp:.1f}°C")
                 print(f"   🏢 Urban Density: {urban_density:.2f}")
-                
-                # Show saved image files
-                if 'saved_files' in vegetation_analysis:
-                    print(f"   📷 Satellite Image: saved to satellite_images/")
-                    print(f"   🌱 Vegetation Mask: {vegetation_analysis['saved_files']['vegetation_mask']}")
-                    print(f"   📊 Vegetation Overlay: {vegetation_analysis['saved_files']['vegetation_overlay']}")
-                
+
                 # Calculate heat island intensity
                 heat_island = service.estimate_heat_island_from_live_data(satellite_data)
                 print(f"   🔥 Heat Island Intensity: {heat_island['intensity']:.1f}/10 ({heat_island['risk_level']})")
