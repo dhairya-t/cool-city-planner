@@ -179,8 +179,9 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
                 vellum_analysis=outputs,
             )
         finally:
-            images.pop(hm_id)
-            images.pop(im_id)
+            pass
+            # images.pop(hm_id)
+            # images.pop(im_id)
 
     except HTTPException:
         raise
