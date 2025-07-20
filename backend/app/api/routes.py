@@ -176,7 +176,7 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
                 status="success",
                 image=im_id,
                 heatmap=hm_id,
-                vellum_analysis=outputs[0].json(),
+                vellum_analysis=outputs[0].dict(),
             )
         finally:
             pass
