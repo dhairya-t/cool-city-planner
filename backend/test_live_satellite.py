@@ -8,6 +8,7 @@ import sys
 import os
 
 import cv2
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -44,11 +45,13 @@ async def test_live_satellite_analysis():
         )
 
         heat_map = satellite_data.heat_map
-        print(heat_map.shape)
+        heat_map_normalized = ((heat_map + 1) / 2 * 255).astype(np.uint8)
+        heat_map_colored = cv2.applyColorMap(heat_map_normalized, cv2.COLORMAP_JET)
+
 
         # Write heat map to file
         heat_map_file = f"heat_map_{location['name'].lower().replace(' ', '_')}.png"
-        cv2.imwrite(heat_map_file, heat_map)
+        cv2.imwrite(heat_map_file, heat_map_colored)
 
         if satellite_data:
             # Store results
