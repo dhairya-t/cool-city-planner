@@ -18,4 +18,4 @@ class SatelliteAnalysisResponse(BaseModel):
     status: str = Field(..., description="Status of the analysis")
     image: str = Field(..., description="Base64-encoded image of the analysis")
     heatmap: str = Field(..., description="Base64-encoded heatmap of the analysis")
-    vellum_analysis: dict = Field(..., description="Vellum analysis output")
+    vellum_analysis: list[dict] = Field(..., description="Vellum analysis output")
