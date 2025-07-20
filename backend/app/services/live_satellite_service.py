@@ -45,7 +45,7 @@ def _project_with_scale(lat: float, lon: float, scale: int) -> Tuple[float, floa
 
 
 def urban_heatmap(building_mask, veg_mask,
-                  sigma_build=15, sigma_veg=15,
+                  sigma_build=20, sigma_veg=20,
                   w_build=1.0, w_veg=0.9,
                   method="ndui"):
     """

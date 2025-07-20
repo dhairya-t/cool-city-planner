@@ -41,7 +41,7 @@ async def test_live_satellite_analysis():
         satellite_data = await service.get_live_satellite_data(
             location['lat'],
             location['lon'],
-            analysis_radius=0.02
+            analysis_radius=0.025
         )
 
         heat_map = satellite_data.heat_map
