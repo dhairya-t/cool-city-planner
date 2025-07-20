@@ -25,7 +25,7 @@ app = FastAPI(
     debug=settings.DEBUG
 )
 
-# Configure CORS
+# Allow all origins without credentials for public API access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

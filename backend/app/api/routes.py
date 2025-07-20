@@ -121,7 +121,7 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
         image_analysis = await satellite_service.get_live_satellite_data(
             lat=request.latitude,
             lon=request.longitude,
-            analysis_radius=0.05,
+            analysis_radius=0.005,
         )
 
         if image_analysis is None:
