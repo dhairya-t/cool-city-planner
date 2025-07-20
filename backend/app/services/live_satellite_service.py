@@ -230,7 +230,6 @@ class LiveSatelliteService:
     async def get_live_satellite_data(self, lat: float, lon: float, analysis_radius: float = 0.001) -> Optional[Dict[str, Any]]:
         """
         Get live satellite data and analysis for coordinates
-        Based on Chilladelphia's approach but processes on-demand
         """
         logger.info(f"🗺️ Getting live satellite data for {lat}, {lon} (radius: {analysis_radius})")
         
