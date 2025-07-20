@@ -1,0 +1,125 @@
+2025-07-19 16:46:43,273 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:46:45,639 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:46:45,771 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:46:45,787 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:46:45,788 - main - INFO - Environment: development
+2025-07-19 16:46:45,788 - main - INFO - Debug mode: True
+2025-07-19 16:46:45,789 - main - WARNING - TwelveLabs API key not configured - using mock data
+2025-07-19 16:46:45,789 - main - WARNING - Vellum API key not configured
+2025-07-19 16:46:45,790 - main - WARNING - Gemini API key not configured
+2025-07-19 16:50:29,666 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:54:29,276 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:54:29,339 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:54:29,348 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:54:29,348 - main - INFO - Environment: development
+2025-07-19 16:54:29,349 - main - INFO - Debug mode: True
+2025-07-19 16:55:02,982 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:55:05,187 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:05,251 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:05,258 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:55:05,258 - main - INFO - Environment: development
+2025-07-19 16:55:05,258 - main - INFO - Debug mode: True
+2025-07-19 16:55:10,845 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:55:12,887 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:12,957 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:12,967 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:55:12,967 - main - INFO - Environment: development
+2025-07-19 16:55:12,967 - main - INFO - Debug mode: True
+2025-07-19 16:55:16,717 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:55:18,633 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:18,690 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:18,698 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:55:18,698 - main - INFO - Environment: development
+2025-07-19 16:55:18,698 - main - INFO - Debug mode: True
+2025-07-19 16:55:24,272 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:55:26,353 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:26,407 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:26,414 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:55:26,415 - main - INFO - Environment: development
+2025-07-19 16:55:26,415 - main - INFO - Debug mode: True
+2025-07-19 16:55:33,968 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:55:35,887 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:35,948 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:55:35,958 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:55:35,958 - main - INFO - Environment: development
+2025-07-19 16:55:35,958 - main - INFO - Debug mode: True
+2025-07-19 16:56:34,720 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:56:34,722 - __main__ - INFO - ============================================================
+2025-07-19 16:56:34,722 - __main__ - INFO - CoolCity Planner - TwelveLabs Integration Test
+2025-07-19 16:56:34,722 - __main__ - INFO - ============================================================
+2025-07-19 16:56:34,722 - __main__ - INFO - Testing TwelveLabs API connection...
+2025-07-19 16:56:34,736 - __main__ - INFO - TwelveLabs client initialized successfully
+2025-07-19 16:56:34,736 - __main__ - INFO - Testing index management...
+2025-07-19 16:56:34,737 - app.services.twelve_labs_client - ERROR - Error managing index: IndexesClient.list() got an unexpected keyword argument 'name'
+2025-07-19 16:56:34,829 - __main__ - INFO - Testing UrbanAnalyzer...
+2025-07-19 16:56:34,829 - __main__ - INFO - Creating test image...
+2025-07-19 16:56:35,629 - __main__ - INFO - Created test image: test_satellite.jpg
+2025-07-19 16:56:35,636 - __main__ - INFO - Analyzing test image...
+2025-07-19 16:56:35,809 - app.services.twelve_labs_client - INFO - Created temporary video: temp_video_909619402ac4433ebb48c52a2a9b21a1.mp4
+2025-07-19 16:56:35,810 - app.services.twelve_labs_client - INFO - Uploading video: temp_video_909619402ac4433ebb48c52a2a9b21a1.mp4
+2025-07-19 16:56:35,810 - app.services.twelve_labs_client - ERROR - Error uploading video: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 16:56:35,810 - app.services.twelve_labs_client - ERROR - Error analyzing satellite image: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 16:56:35,817 - __main__ - INFO - Configuration status:
+2025-07-19 16:56:35,826 - __main__ - INFO -   - Environment: development
+2025-07-19 16:56:59,763 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:57:01,792 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:57:01,846 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:57:01,853 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:57:01,853 - main - INFO - Environment: development
+2025-07-19 16:57:01,854 - main - INFO - Debug mode: True
+2025-07-19 16:57:11,176 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:57:14,372 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:57:14,506 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:57:14,533 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:57:14,533 - main - INFO - Environment: development
+2025-07-19 16:57:14,534 - main - INFO - Debug mode: True
+2025-07-19 16:57:18,335 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 16:57:21,756 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:57:21,836 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:57:21,854 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:57:21,855 - main - INFO - Environment: development
+2025-07-19 16:57:21,855 - main - INFO - Debug mode: True
+2025-07-19 16:58:12,676 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:58:12,676 - __main__ - INFO - ============================================================
+2025-07-19 16:58:12,676 - __main__ - INFO - CoolCity Planner - TwelveLabs Integration Test
+2025-07-19 16:58:12,676 - __main__ - INFO - ============================================================
+2025-07-19 16:58:12,676 - __main__ - INFO - Testing TwelveLabs API connection...
+2025-07-19 16:58:12,690 - __main__ - INFO - TwelveLabs client initialized successfully
+2025-07-19 16:58:12,690 - __main__ - INFO - Testing index management...
+2025-07-19 16:58:12,887 - app.services.twelve_labs_client - ERROR - Error managing index: headers: {'date': 'Sat, 19 Jul 2025 20:58:13 GMT', 'content-type': 'application/json; charset=UTF-8', 'content-length': '148', 'connection': 'keep-alive', 'content-encoding': 'gzip', 'tl-report': 'backend', 'vary': 'Accept-Encoding', 'x-trace-id': '8772921892698902709', 'strict-transport-security': 'max-age=31536000; includeSubDomains'}, status_code: 401, body: {'code': 'api_key_invalid', 'message': 'API Key is either invalid or expired. Please check your API key or generate a new one from the dashboard and try again.'}
+2025-07-19 16:58:12,896 - __main__ - INFO - Testing UrbanAnalyzer...
+2025-07-19 16:58:12,907 - __main__ - INFO - Analyzing test image...
+2025-07-19 16:58:13,095 - app.services.twelve_labs_client - INFO - Created temporary video: temp_video_5c132e6b7a1f477db4b8f326402ac298.mp4
+2025-07-19 16:58:13,095 - app.services.twelve_labs_client - INFO - Uploading video: temp_video_5c132e6b7a1f477db4b8f326402ac298.mp4
+2025-07-19 16:58:13,095 - app.services.twelve_labs_client - ERROR - Error uploading video: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 16:58:13,095 - app.services.twelve_labs_client - ERROR - Error analyzing satellite image: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 16:58:13,105 - __main__ - INFO - Configuration status:
+2025-07-19 16:58:13,109 - __main__ - INFO -   - Environment: development
+2025-07-19 16:58:24,020 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:58:25,726 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:58:25,778 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 16:58:25,786 - main - INFO - Starting CoolCity Planner API
+2025-07-19 16:58:25,786 - main - INFO - Environment: development
+2025-07-19 16:58:25,786 - main - INFO - Debug mode: True
+2025-07-19 16:59:23,969 - app.api.routes - INFO - Image uploaded successfully. Task ID: ce605ba7-9084-4f37-aed0-0ac212ffb224
+2025-07-19 16:59:23,970 - app.api.routes - INFO - Starting analysis for task ce605ba7-9084-4f37-aed0-0ac212ffb224
+2025-07-19 16:59:23,984 - app.api.routes - INFO - Performing real analysis with TwelveLabs API
+2025-07-19 16:59:24,205 - app.services.twelve_labs_client - INFO - Created temporary video: temp_video_e37c6cbe5de14632b937584a44a67883.mp4
+2025-07-19 16:59:24,206 - app.services.twelve_labs_client - INFO - Uploading video: temp_video_e37c6cbe5de14632b937584a44a67883.mp4
+2025-07-19 16:59:24,206 - app.services.twelve_labs_client - ERROR - Error uploading video: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 16:59:24,206 - app.services.twelve_labs_client - ERROR - Error analyzing satellite image: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 16:59:24,206 - app.api.routes - ERROR - Error processing satellite image for task ce605ba7-9084-4f37-aed0-0ac212ffb224: TasksClient.create() got an unexpected keyword argument 'file'
+2025-07-19 17:00:51,876 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 17:10:07,701 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 17:10:10,429 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:10:10,510 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:10:10,520 - main - INFO - Starting CoolCity Planner API
+2025-07-19 17:10:10,521 - main - INFO - Environment: development
+2025-07-19 17:10:10,522 - main - INFO - Debug mode: True
+2025-07-19 17:29:28,160 - main - INFO - Shutting down CoolCity Planner API
+2025-07-19 17:29:34,926 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:29:35,052 - app.core.logging - INFO - Logging configured with level: INFO
+2025-07-19 17:29:35,071 - main - INFO - Starting CoolCity Planner API
+2025-07-19 17:29:35,071 - main - INFO - Environment: development
+2025-07-19 17:29:35,071 - main - INFO - Debug mode: True
+2025-07-19 17:30:44,524 - main - INFO - Shutting down CoolCity Planner API
