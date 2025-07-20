@@ -11,6 +11,10 @@ from app.core.logging import get_logger
 from app.services.live_satellite_service import LiveSatelliteService
 from app.models.schemas import SatelliteAnalysisRequest, SatelliteAnalysisResponse
 
+import os
+from vellum.client import Vellum
+import vellum.types as types
+
 logger = get_logger(__name__)
 
 # Global router
@@ -138,7 +142,42 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
         images[im_id] = image_analysis.image
 
         try:
-            pass
+
+            client = Vellum(
+                api_key=os.getenv("VELLUM_API_KEY")
+            )
+
+            hm_url = f"https://urban.midnightsky.net/image/{hm_id}"
+            im_url = f"https://urban.midnightsky.net/image/{im_id}"
+
+            result = client.execute_workflow(
+                workflow_deployment_name="heat-mapper-agent-workflow",
+                release_tag="LATEST",
+                inputs=[
+                    types.WorkflowRequestStringInputRequest(
+                        name="heatmap_image_url",
+                        type="STRING",
+                        value=hm_url,
+                    ),
+                    types.WorkflowRequestStringInputRequest(
+                        name="city_image_url",
+                        type="STRING",
+                        value=im_url,
+                    ),
+                ],
+            )
+
+            if result.data.state == "REJECTED":
+                raise Exception(result.data.error.message)
+
+            outputs = result.data.outputs
+
+            return SatelliteAnalysisResponse(
+                status="success",
+                image=im_id,
+                heatmap=hm_id,
+                vellum_analysis=outputs,
+            )
         finally:
             images.pop(hm_id)
             images.pop(im_id)

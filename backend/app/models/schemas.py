@@ -3,6 +3,7 @@ Pydantic schemas for API request/response models
 """
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
+from vellum import WorkflowOutput
 
 
 class SatelliteAnalysisRequest(BaseModel):
@@ -15,5 +16,6 @@ class SatelliteAnalysisRequest(BaseModel):
 class SatelliteAnalysisResponse(BaseModel):
     """Response model for satellite analysis endpoint"""
     status: str = Field(..., description="Status of the analysis")
-    message: str = Field(..., description="Human-readable message")
-    data: Optional[Dict[str, Any]] = Field(None, description="Analysis results")
+    image: str = Field(..., description="Base64-encoded image of the analysis")
+    heatmap: str = Field(..., description="Base64-encoded heatmap of the analysis")
+    vellum_analysis: list[WorkflowOutput]
