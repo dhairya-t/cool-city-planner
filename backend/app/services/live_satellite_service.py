@@ -18,9 +18,18 @@ from typing import Dict, Any, Tuple, Optional
 from datetime import datetime
 from pathlib import Path
 from app.core.logging import get_logger
+from dataclasses import dataclass
 
 logger = get_logger(__name__)
 logger.setLevel(logging.DEBUG)
+
+@dataclass
+class ImageAnalysis:
+    region: Tuple[float, float, float, float]  # (north_lat, west_lon, south_lat, east_lon)
+    image: np.ndarray  # Satellite image
+    vegetation_mask: np.ndarray | None  # Vegetation mask
+    building_mask: np.ndarray | None  # Building mask
+
 
 class LiveSatelliteService:
     """Live satellite imagery processing - downloads and analyzes on demand"""
@@ -167,81 +176,56 @@ class LiveSatelliteService:
 
         return img if tiles_downloaded > 0 else None
     
-    def _analyze_vegetation_simple(self, image: np.ndarray, lat: float, lon: float) -> Tuple[float, Dict[str, Any]]:
+    def analyze(self, image: np.ndarray, bounds: Tuple[float, float, float, float]) -> ImageAnalysis:
         """
         Simple vegetation analysis using color-based detection
         Alternative to detectree for faster processing without ML dependencies
         """
-        try:
-            # Convert BGR to RGB
-            rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            
-            # Convert to HSV for better vegetation detection
-            hsv = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2HSV)
-            
-            # Define green color ranges for vegetation
-            # Two ranges to capture different shades of green
-            lower_green = np.array([30, 18, 10])   # Light green
-            upper_green = np.array([200, 120, 120]) # Dark green
+        # Convert BGR to RGB
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            # Create masks for green vegetation
-            mask1 = cv2.inRange(hsv, lower_green, upper_green)
+        # Convert to HSV for better vegetation detection
+        hsv = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2HSV)
 
-            # Combine masks
-            vegetation_mask = mask1
+        # Define green color ranges for vegetation
+        # Two ranges to capture different shades of green
+        lower_green = np.array([30, 18, 10])   # Light green
+        upper_green = np.array([200, 120, 120]) # Dark green
 
-            # Calculate vegetation percentage
-            total_pixels = vegetation_mask.size
-            vegetation_pixels = np.sum(vegetation_mask > 0)
-            vegetation_percentage = (vegetation_pixels / total_pixels) * 100.0
-            
-            # Classify vegetation health based on percentage
-            if vegetation_percentage > 40:
-                health = "excellent"
-            elif vegetation_percentage > 25:
-                health = "good"  
-            elif vegetation_percentage > 15:
-                health = "moderate"
-            elif vegetation_percentage > 5:
-                health = "poor"
-            else:
-                health = "very_poor"
-            
-            # Save vegetation analysis visualization
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            mask_filename = f"vegetation_mask_{lat:.6f}_{lon:.6f}.png"
-            mask_path = self.image_dir / mask_filename
-            
-            # Create colored vegetation overlay
-            vegetation_overlay = rgb_image.copy()
-            vegetation_overlay[vegetation_mask > 0] = [0, 255, 0]  # Green for vegetation
-            
-            # Save vegetation mask and overlay
-            cv2.imwrite(str(mask_path), vegetation_mask)
-            overlay_filename = f"vegetation_overlay_{lat:.6f}_{lon:.6f}.png"
-            overlay_path = self.image_dir / overlay_filename
-            cv2.imwrite(str(overlay_path), cv2.cvtColor(vegetation_overlay, cv2.COLOR_RGB2BGR))
-            
-            logger.info(f"🌱 Saved vegetation mask: {mask_path}")
-            logger.info(f"📊 Saved vegetation overlay: {overlay_path}")
-            
-            analysis = {
-                "vegetation_pixels": int(vegetation_pixels),
-                "total_pixels": int(total_pixels),
-                "vegetation_mask_created": True,
-                "health_classification": health,
-                "processing_method": "color_based_hsv",
-                "saved_files": {
-                    "vegetation_mask": str(mask_path),
-                    "vegetation_overlay": str(overlay_path)
-                }
-            }
-            
-            return vegetation_percentage, analysis
-            
-        except Exception as e:
-            logger.error(f"❌ Vegetation analysis failed: {e}")
-            return 0.0, {"error": str(e), "processing_method": "failed"}
+        # Create masks for green vegetation
+        mask1 = cv2.inRange(hsv, lower_green, upper_green)
+
+        # Combine masks
+        vegetation_mask = mask1
+
+        # Calculate vegetation percentage
+        total_pixels = vegetation_mask.size
+        vegetation_pixels = np.sum(vegetation_mask > 0)
+        vegetation_percentage = (vegetation_pixels / total_pixels) * 100.0
+
+        # Save vegetation analysis visualization
+        mask_filename = f"vegetation_mask.png"
+        mask_path = self.image_dir / mask_filename
+
+        # Create colored vegetation overlay
+        vegetation_overlay = rgb_image.copy()
+        vegetation_overlay[vegetation_mask > 0] = [0, 255, 0]  # Green for vegetation
+
+        # Save vegetation mask and overlay
+        cv2.imwrite(str(mask_path), vegetation_mask)
+        overlay_filename = f"vegetation_overlay.png"
+        overlay_path = self.image_dir / overlay_filename
+        cv2.imwrite(str(overlay_path), cv2.cvtColor(vegetation_overlay, cv2.COLOR_RGB2BGR))
+
+        logger.info(f"🌱 Saved vegetation mask: {mask_path}")
+        logger.info(f"📊 Saved vegetation overlay: {overlay_path}")
+
+        return ImageAnalysis(
+            region=bounds,
+            image=image,
+            vegetation_mask=vegetation_mask,
+            building_mask=None,
+        )
     
     async def get_live_satellite_data(self, lat: float, lon: float, analysis_radius: float = 0.001) -> Optional[Dict[str, Any]]:
         """
@@ -267,18 +251,8 @@ class LiveSatelliteService:
                 return None
             
             # Analyze vegetation in the image
-            vegetation_percentage, vegetation_analysis = self._analyze_vegetation_simple(satellite_image, lat, lon)
-            
-            # Calculate NDVI approximation from vegetation percentage
-            # Simple conversion: higher vegetation % = higher NDVI
-            ndvi_estimate = (vegetation_percentage / 100.0) * 0.8  # Scale to realistic NDVI range
-            
-            # Estimate land surface temperature based on vegetation
-            # Less vegetation = higher temperature (urban heat island effect)
-            base_temp = 25.0  # Base temperature in Celsius
-            vegetation_cooling = vegetation_percentage * 0.2  # Cooling effect of vegetation
-            estimated_lst = base_temp + (50 - vegetation_percentage) * 0.15
-            
+            analysis = self.analyze(satellite_image, lat, lon)
+
             result = {
                 "coordinates": {"lat": lat, "lon": lon},
                 "analysis_region": {
@@ -286,98 +260,12 @@ class LiveSatelliteService:
                     "bottom_right": [lat2, lon2],
                     "radius_degrees": analysis_radius
                 },
-                "satellite_imagery": {
-                    "source": "Google Maps Satellite",
-                    "zoom_level": zoom,
-                    "image_dimensions": [satellite_image.shape[1], satellite_image.shape[0]],
-                    "download_timestamp": datetime.now().isoformat(),
-                    "data_quality": "high"
-                },
-                "vegetation_data": {
-                    "vegetation_coverage_percent": round(vegetation_percentage, 2),
-                    "ndvi_estimate": round(ndvi_estimate, 3),
-                    "vegetation_health": vegetation_analysis.get("health_classification", "unknown"),
-                    "analysis_method": vegetation_analysis.get("processing_method", "color_based"),
-                    "vegetation_pixels": vegetation_analysis.get("vegetation_pixels", 0),
-                    "total_pixels": vegetation_analysis.get("total_pixels", 0)
-                },
-                "thermal_estimate": {
-                    "estimated_land_surface_temp": round(estimated_lst, 1),
-                    "temperature_unit": "celsius",
-                    "estimation_method": "vegetation_based",
-                    "cooling_effect": round(vegetation_cooling, 1)
-                },
-                "urban_analysis": {
-                    "impervious_surface_estimate": round(100 - vegetation_percentage, 1),
-                    "urban_density_score": round((100 - vegetation_percentage) / 100, 2),
-                    "built_environment_percentage": max(0, round(100 - vegetation_percentage - 10, 1))  # Subtract water/bare soil
-                },
-                "processing_info": {
-                    "timestamp": datetime.now().isoformat(),
-                    "processing_method": "live_satellite_analysis",
-                    "data_source": "Google Maps Satellite API",
-                    "storage_used": False,
-                    "real_time": True
-                }
+                "analysis": analysis
             }
             
-            logger.info(f"✅ Live satellite analysis complete - {vegetation_percentage:.1f}% vegetation coverage")
+            logger.info(f"✅ Live satellite analysis complete")
             return result
             
         except Exception as e:
             logger.error(f"❌ Live satellite analysis failed: {e}")
             return None
-    
-    def estimate_heat_island_from_live_data(self, satellite_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Calculate heat island intensity from live satellite analysis"""
-        if not satellite_data:
-            return {"intensity": 0, "risk": "unknown"}
-        
-        try:
-            # Extract metrics
-            vegetation_percent = satellite_data["vegetation_data"]["vegetation_coverage_percent"]
-            estimated_lst = satellite_data["thermal_estimate"]["estimated_land_surface_temp"]
-            urban_density = satellite_data["urban_analysis"]["urban_density_score"]
-            
-            # Heat island calculation
-            # Higher temperature factor
-            temp_factor = max(0, (estimated_lst - 25) / 15) * 3
-            
-            # Lower vegetation factor (lack of cooling)
-            vegetation_factor = (100 - vegetation_percent) / 100 * 3
-            
-            # Urban density factor
-            urban_factor = urban_density * 2
-            
-            # Combined intensity (0-10 scale)
-            intensity = min(10, temp_factor + vegetation_factor + urban_factor)
-            
-            # Risk assessment
-            if intensity > 7.5:
-                risk = "extreme"
-            elif intensity > 5.5:
-                risk = "high"
-            elif intensity > 3.5:
-                risk = "moderate"
-            else:
-                risk = "low"
-            
-            return {
-                "intensity": round(intensity, 2),
-                "risk_level": risk,
-                "contributing_factors": {
-                    "estimated_temperature": round(temp_factor, 2),
-                    "vegetation_deficit": round(vegetation_factor, 2),
-                    "urban_density": round(urban_factor, 2)
-                },
-                "live_satellite_metrics": {
-                    "vegetation_coverage_percent": vegetation_percent,
-                    "estimated_lst_celsius": estimated_lst,
-                    "urban_density_score": urban_density
-                },
-                "data_source": "live_google_maps_satellite"
-            }
-            
-        except Exception as e:
-            logger.error(f"❌ Heat island calculation failed: {e}")
-            return {"intensity": 0, "risk": "error", "error": str(e)}
