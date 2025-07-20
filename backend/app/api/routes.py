@@ -180,13 +180,14 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
             )
         finally:
             pass
-            # images.pop(hm_id)
-            # images.pop(im_id)
+            images.pop(hm_id)
+            images.pop(im_id)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Error during satellite analysis: {str(e)}")
+        import traceback
+        logger.error(f"❌ Error during satellite analysis:\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error during satellite analysis: {str(e)}"
