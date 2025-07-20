@@ -1,4 +1,11 @@
+import uuid
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+from pathlib import Path
+import cv2
+import numpy as np
+import io
 
 from app.core.logging import get_logger
 from app.services.live_satellite_service import LiveSatelliteService
@@ -12,8 +19,91 @@ router = APIRouter()
 # Initialize satellite service
 satellite_service = LiveSatelliteService()
 
+# Image dictionary mapping keys to actual image data (numpy arrays)
+images = {}
 
-@router.post("/analyze-satellite", response_model=SatelliteAnalysisResponse)
+@router.get("/image/{image_key}")
+async def get_image(image_key: str):
+    """
+    Serve an image from the in-memory dictionary
+
+    Available image keys depend on what's currently loaded in memory.
+    """
+    try:
+        # Check if the key exists in our image dictionary
+        if image_key not in images:
+            available_keys = list(images.keys())
+            raise HTTPException(
+                status_code=404,
+                detail=f"Image key '{image_key}' not found. Available keys: {available_keys}"
+            )
+
+        # Get the image data from the dictionary
+        image_data = images[image_key]
+
+        if image_data is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Image data is None for key '{image_key}'"
+            )
+
+        logger.info(f"📷 Serving image from memory: {image_key} (shape: {image_data.shape})")
+
+        # Encode the numpy array as PNG
+        success, encoded_image = cv2.imencode('.png', image_data)
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to encode image for key '{image_key}'"
+            )
+
+        # Convert to bytes
+        image_bytes = encoded_image.tobytes()
+
+        # Return the image as a response
+        return Response(
+            content=image_bytes,
+            media_type="image/png",
+            headers={"Content-Disposition": f"inline; filename=\"{image_key}.png\""}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error serving image '{image_key}': {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error while serving image: {str(e)}"
+        )
+
+
+@router.get("/images/available")
+async def get_available_images():
+    """Get list of available image keys and their metadata"""
+    try:
+        available_images = {}
+        for key, image_data in images.items():
+            if image_data is not None:
+                available_images[key] = {
+                    "shape": image_data.shape,
+                    "dtype": str(image_data.dtype),
+                    "size_mb": round(image_data.nbytes / (1024 * 1024), 2)
+                }
+
+        return {
+            "available_keys": list(images.keys()),
+            "count": len(images),
+            "details": available_images
+        }
+    except Exception as e:
+        logger.error(f"❌ Error getting available images: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.post("/analyze", response_model=SatelliteAnalysisResponse)
 async def analyze_satellite_data(request: SatelliteAnalysisRequest):
     """
     Analyze satellite data for given coordinates
@@ -37,26 +127,21 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
                 detail="Failed to retrieve or analyze satellite data"
             )
 
-        logger.info(f"✅ Satellite analysis completed successfully")
+        heatmap_image = image_analysis.heat_map
+        heatmap_normalized = ((heatmap_image + 1) / 2 * 255).astype(np.uint8)
+        heatmap_colored = cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET)
 
-        # TODO: Process ImageAnalysis object and return meaningful data
-        # For now, return a stub response
-        return SatelliteAnalysisResponse(
-            status="success",
-            message=f"Satellite analysis completed for coordinates ({request.latitude}, {request.longitude})",
-            data={
-                "region": {
-                    "north_lat": image_analysis.region[0],
-                    "west_lon": image_analysis.region[1],
-                    "south_lat": image_analysis.region[2],
-                    "east_lon": image_analysis.region[3]
-                },
-                "analysis_complete": True,
-                "has_vegetation_mask": image_analysis.vegetation_mask is not None,
-                "has_building_mask": image_analysis.building_mask is not None,
-                "has_heat_map": image_analysis.heat_map is not None
-            }
-        )
+        hm_id = f"{str(uuid.uuid4())}-heatmap"
+        im_id = f"{str(uuid.uuid4())}-image"
+
+        images[hm_id] = heatmap_colored
+        images[im_id] = image_analysis.image
+
+        try:
+            pass
+        finally:
+            images.pop(hm_id)
+            images.pop(im_id)
 
     except HTTPException:
         raise

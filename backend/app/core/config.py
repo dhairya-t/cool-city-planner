@@ -14,7 +14,7 @@ class Settings(BaseModel):
     
     # Server settings
     HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", "8000"))
+    PORT: int = int(os.getenv("PORT", "5001"))
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
