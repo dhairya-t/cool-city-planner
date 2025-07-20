@@ -3,13 +3,6 @@ import HeatMap from "./components/HeatMap";
 import RecommendationPanel from "./components/RecommendationPanel";
 import AnalysisResults from "./components/AnalysisResults";
 import GoogleMapSelector from "./components/GoogleMapSelector";
-import {
-  analyzeLocation,
-  checkServerHealth,
-  APIError,
-  LocationAnalysisRequest,
-  AnalysisResult,
-} from "./api/analyze";
 import "./App.css";
 
 function App() {
@@ -22,13 +15,10 @@ function App() {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
 
-  const handleLocationSelect = (
-    coordinates: { lat: number; lng: number },
-    zoom: number = 13
-  ) => {
+  const handleLocationSelect = (coordinates: { lat: number; lng: number }) => {
     setSelectedLocation({
       ...coordinates,
-      zoom,
+      zoom: 13,
     });
     setAnalysisComplete(false);
   };
@@ -38,43 +28,66 @@ function App() {
 
     setIsAnalyzing(true);
 
-    try {
-      // Check server health first
-      const isHealthy = await checkServerHealth();
-      if (!isHealthy) {
-        throw new APIError(
-          "Analysis server is not responding. Please ensure the FastAPI server is running.",
-          503
-        );
-      }
-
-      // Prepare the analysis request
-      const request: LocationAnalysisRequest = {
-        latitude: selectedLocation.lat,
-        longitude: selectedLocation.lng,
-        zoom: selectedLocation.zoom,
-        location_name: "Selected Location",
+    // Simulate AI analysis process
+    setTimeout(() => {
+      const mockData = {
+        coordinates: selectedLocation,
+        heatIslandIntensity: 3.2,
+        vegetationCoverage: 23.5,
+        buildingDensity: 67.8,
+        surfaceTemperature: 28.7,
+        recommendations: [
+          {
+            type: "Green Infrastructure",
+            title: "Plant 150 Trees Along Main Corridor",
+            impact: "2.3°C temperature reduction",
+            cost: "$45,000",
+            timeline: "6 months",
+          },
+          {
+            type: "Building Modifications",
+            title: "Convert 5 Rooftops to Green Roofs",
+            impact: "1.8°C local cooling",
+            cost: "$120,000",
+            timeline: "12 months",
+          },
+          {
+            type: "Urban Design",
+            title: "Create Cooling Corridors with Water Features",
+            impact: "3.1°C corridor cooling",
+            cost: "$200,000",
+            timeline: "18 months",
+          },
+        ],
+        interventions: [
+          {
+            id: 1,
+            lat: selectedLocation.lat + 0.001,
+            lng: selectedLocation.lng + 0.001,
+            type: "tree",
+            impact: 2.3,
+          },
+          {
+            id: 2,
+            lat: selectedLocation.lat - 0.001,
+            lng: selectedLocation.lng - 0.001,
+            type: "green_roof",
+            impact: 1.8,
+          },
+          {
+            id: 3,
+            lat: selectedLocation.lat,
+            lng: selectedLocation.lng,
+            type: "water_feature",
+            impact: 3.1,
+          },
+        ],
       };
 
-      // Call the FastAPI endpoint
-      const result: AnalysisResult = await analyzeLocation(request);
-
-      setAnalysisData(result);
-      setAnalysisComplete(true);
-    } catch (error) {
-      console.error("Analysis failed:", error);
-
-      // Handle different types of errors
-      if (error instanceof APIError) {
-        alert(`Analysis Error: ${error.message}`);
-      } else {
-        alert(
-          "An unexpected error occurred during analysis. Please try again."
-        );
-      }
-    } finally {
+      setAnalysisData(mockData);
       setIsAnalyzing(false);
-    }
+      setAnalysisComplete(true);
+    }, 3000);
   };
 
   const resetAnalysis = () => {

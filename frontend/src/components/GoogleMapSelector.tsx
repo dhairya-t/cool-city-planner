@@ -4,7 +4,7 @@ import { Wrapper, Status } from "@googlemaps/react-wrapper";
 interface GoogleMapSelectorProps {
   onLocationSelect: (
     coordinates: { lat: number; lng: number },
-    zoom?: number
+    zoom: number
   ) => void;
 }
 
