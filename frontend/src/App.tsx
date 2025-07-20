@@ -89,7 +89,7 @@ function App() {
               🌡️
             </div>
             <h1 className="text-3xl font-bold text-gray-900">
-              CoolCity Planner
+              UrbanTherm
             </h1>
             <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full">
               AI-Powered Urban Climate Analysis
@@ -233,7 +233,7 @@ function App() {
                         ⚡
                       </div>
                       <span className="text-sm">
-                        Gemini Intelligence Synthesis
+                        OpenAI Intelligence Synthesis
                       </span>
                     </div>
                   </div>

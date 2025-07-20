@@ -176,7 +176,7 @@ function App() {
                     </div>
                     <div className="flex items-center space-x-3">
                       <Zap className="h-5 w-5 text-green-500" />
-                      <span className="text-sm">Gemini Intelligence Synthesis</span>
+                      <span className="text-sm">OpenAI Intelligence Synthesis</span>
                     </div>
                   </div>
                   
