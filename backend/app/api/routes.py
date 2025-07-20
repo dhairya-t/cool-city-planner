@@ -106,7 +106,6 @@ async def get_available_images():
             detail=f"Internal server error: {str(e)}"
         )
 
-
 @router.post("/analyze", response_model=SatelliteAnalysisResponse)
 async def analyze_satellite_data(request: SatelliteAnalysisRequest):
     """
@@ -131,15 +130,17 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
                 detail="Failed to retrieve or analyze satellite data"
             )
 
-        heatmap_image = image_analysis.heat_map
-        heatmap_normalized = ((heatmap_image + 1) / 2 * 255).astype(np.uint8)
-        heatmap_colored = cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET)
+        heatmap_image_raw = image_analysis.heat_map
+        heatmap_normalized = ((heatmap_image_raw + 1) / 2 * 255).astype(np.uint8)
+        heatmap_img = crop_and_resize(cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET))
+
+        satelite_img = crop_and_resize(image_analysis.image)
 
         hm_id = f"{str(uuid.uuid4())}-heatmap"
         im_id = f"{str(uuid.uuid4())}-image"
 
-        images[hm_id] = heatmap_colored
-        images[im_id] = image_analysis.image
+        images[hm_id] = heatmap_img
+        images[im_id] = satelite_img
 
         try:
 
@@ -174,14 +175,14 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
 
             return SatelliteAnalysisResponse(
                 status="success",
-                image=im_id,
-                heatmap=hm_id,
+                image=im_url,
+                heatmap=hm_url,
                 vellum_analysis=[it.dict() for it in outputs],
             )
         finally:
             pass
-            images.pop(hm_id)
-            images.pop(im_id)
+            # images.pop(hm_id)
+            # images.pop(im_id)
 
     except HTTPException:
         raise
@@ -192,3 +193,28 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
             status_code=500,
             detail=f"Internal server error during satellite analysis: {str(e)}"
         )
+
+
+def crop_and_resize(img: np.ndarray) -> np.ndarray:
+    """
+    This function crops the input image into a square and resizes it to 512x512 pixels.
+    The image is cropped in the middle of the longer side.
+    :param img: Input image
+    :return: Cropped and resized image
+    """
+    h, w, _ = img.shape
+
+    # Determine the size of the square crop (minimum of height and width)
+    crop_size = min(h, w)
+
+    # Calculate the starting coordinates for center cropping
+    start_y = (h - crop_size) // 2
+    start_x = (w - crop_size) // 2
+
+    # Crop the image to a square
+    cropped_img = img[start_y:start_y + crop_size, start_x:start_x + crop_size]
+
+    # Resize to 512x512 pixels
+    resized_img = cv2.resize(cropped_img, (512, 512), interpolation=cv2.INTER_LINEAR)
+
+    return resized_img
