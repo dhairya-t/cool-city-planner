@@ -10,7 +10,7 @@ class SatelliteAnalysisRequest(BaseModel):
     """Request model for satellite analysis endpoint"""
     latitude: float = Field(..., description="Latitude coordinate", ge=-90, le=90)
     longitude: float = Field(..., description="Longitude coordinate", ge=-180, le=180)
-    analysis_radius: Optional[float] = Field(0.001, description="Radius for analysis area", gt=0)
+    analysis_radius: Optional[float] = Field(0.005, description="Radius for analysis area", gt=0)
 
 
 class SatelliteAnalysisResponse(BaseModel):
@@ -18,4 +18,6 @@ class SatelliteAnalysisResponse(BaseModel):
     status: str = Field(..., description="Status of the analysis")
     image: str = Field(..., description="Base64-encoded image of the analysis")
     heatmap: str = Field(..., description="Base64-encoded heatmap of the analysis")
+    building_coverage: float = Field(..., description="Building density in the analysis area")
+    vegetation_coverage: float = Field(..., description="Vegetation density in the analysis area")
     vellum_analysis: list[dict] = Field(..., description="Vellum analysis output")
