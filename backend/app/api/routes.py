@@ -133,14 +133,16 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
         heatmap_image_raw = image_analysis.heat_map
         heatmap_normalized = ((heatmap_image_raw + 1) / 2 * 255).astype(np.uint8)
         heatmap_img = crop_and_resize(cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET))
-
-        satelite_img = crop_and_resize(image_analysis.image)
+        satellite_img = crop_and_resize(image_analysis.image)
 
         hm_id = f"{str(uuid.uuid4())}-heatmap"
         im_id = f"{str(uuid.uuid4())}-image"
 
         images[hm_id] = heatmap_img
-        images[im_id] = satelite_img
+        images[im_id] = satellite_img
+
+        vegetation_coverage: float = np.mean(image_analysis.vegetation_mask > 0.5).astype(np.float32)
+        building_coverage: float = np.mean(image_analysis.building_mask > 0.5).astype(np.float32)
 
         try:
 
@@ -177,6 +179,8 @@ async def analyze_satellite_data(request: SatelliteAnalysisRequest):
                 status="success",
                 image=im_url,
                 heatmap=hm_url,
+                building_coverage=building_coverage,
+                vegetation_coverage=vegetation_coverage,
                 vellum_analysis=[it.dict() for it in outputs],
             )
         finally:
