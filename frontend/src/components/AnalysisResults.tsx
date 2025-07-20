@@ -18,9 +18,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ data }) => {
         </div>
       ),
       label: "Vegetation Coverage",
-      value: `${Math.min(data.vegetation_coverage * 10, 100)}%`,
+      value: `${Math.min(data.vegetation_coverage * 4, 100)}%`,
       description: "Current green space",
-      progress: Math.min(data.vegetation_coverage * 10, 100),
+      progress: Math.min(data.vegetation_coverage * 4, 100),
       color: "bg-green-500",
     },
     {
@@ -30,9 +30,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ data }) => {
         </div>
       ),
       label: "Building Density",
-      value: `${Math.min(data.building_coverage * 10, 100)}%`,
+      value: `${Math.min(data.building_coverage * 8, 100)}%`,
       description: "Urban development",
-      progress: Math.min(data.building_coverage * 10, 100),
+      progress: Math.min(data.building_coverage * 8, 100),
       color: "bg-blue-500",
     },
   ];
